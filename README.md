@@ -1,4 +1,7 @@
-# BetterLocomotion
+# BetterLocomotion DecaEdition
+
+Added support for decamove SDK as an input direction
+
 A mod to enhance locomotion for VRChat using MelonLoader.  
 Successor of [BetterDirections](https://github.com/d-magit/VRC-Mods).
 
