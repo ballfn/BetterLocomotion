@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Collections;
+using System.IO;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.XR;
@@ -10,6 +11,7 @@ using VRC.Animation;
 using BuildInfo = BetterLocomotion.BuildInfo;
 using Main = BetterLocomotion.Main;
 using VRC.SDKBase;
+using DecaSDK;
 
 /*
  * A lot of code was taken from the BetterDirections mod
@@ -27,7 +29,7 @@ namespace BetterLocomotion
 {
     public static class BuildInfo
     {
-        public const string Name = "BetterLocomotion";
+        public const string Name = "BetterLocomotion Deca edition";
         public const string Author = "Erimel, Davi & AxisAngle";
         public const string Version = "1.1.8";
     }
@@ -36,10 +38,11 @@ namespace BetterLocomotion
 
     public class Main : MelonMod
     {
-        private enum Locomotion { Head, Hip, Chest }
+        private enum Locomotion { Head, Hip, Chest,Deca }
         internal static MelonLogger.Instance Logger;
         private static HarmonyLib.Harmony _hInstance;
 
+        private static DecaMoveBehaviour deca;
         // Wait for Ui Init so XRDevice.isPresent is defined
         public override void OnApplicationStart()
         {
@@ -64,7 +67,22 @@ namespace BetterLocomotion
             if (MethodsResolver.IKTweaks_ApplyStoredCalibration != null)
                 HarmonyInstance.Patch(MethodsResolver.IKTweaks_ApplyStoredCalibration, null,
                     new HarmonyMethod(typeof(Main), nameof(VRCTrackingManager_FinishCalibration)));
+            
+            var dllName = "deca_sdk.dll";
 
+            try
+            {
+                using var resourceStream = Assembly.GetExecutingAssembly()
+                    .GetManifestResourceStream(typeof(BetterLocomotion.Main), dllName);
+                using var fileStream = File.Open("VRChat_Data/Plugins/" + dllName, FileMode.Create, FileAccess.Write);
+                resourceStream.CopyTo(fileStream);
+            }
+            catch (IOException ex)
+            {
+                MelonLogger.Warning("Failed to write native dll; will attempt loading it anyway. This is normal if you're running multiple instances of VRChat");
+                MelonDebug.Msg(ex.ToString());
+            }
+            
             Logger.Msg("Successfully loaded!");
         }
 
@@ -82,6 +100,9 @@ namespace BetterLocomotion
             _lolimotion = MelonPreferences.CreateEntry("BetterLocomotion", "Lolimotion", false, "Lolimotion (scale speed to height)");
             _lolimotionMinimum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMinimum", 0.5f, "Lolimotion: minimum height");
             _lolimotionMaximum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMaximum", 1.1f, "Lolimotion: maximum height");
+            deca = new DecaMoveBehaviour();
+            
+            //deca.Start();
         }
 
         private static void WaitForUiInit()
@@ -152,6 +173,15 @@ namespace BetterLocomotion
                 getTrackerChest = GetTracker(HumanBodyBones.Chest);
                 _CalibrationSavingSaverTimer++;
             }
+            
+            
+            deca.Update();
+            if (deca.dbOut != "")
+            {
+                Logger.Error($"[DecaSDK] {deca.dbOut}");
+                deca.dbOut = "";
+            }
+            //Logger.Msg($"[Deca] R{deca.OutTransform.rotation.ToString()} S{deca.state.ToString()}");
         }
         private static void VRCTrackingManager_StartCalibration()
         {
@@ -238,6 +268,7 @@ namespace BetterLocomotion
         // Fixes the game's original direction to match the preferred one
         private static Vector3 CalculateDirection(Vector3 rawVelo)
         {
+            
             if (rawVelo == Vector3.zero) return Vector3.zero;
 
             inputX = Input.GetAxisRaw("Horizontal");
@@ -252,10 +283,12 @@ namespace BetterLocomotion
                 if (_lolimotion.Value) return rawVelo * _avatarScaledSpeed;
                 else return rawVelo;
             }
+            deca.HeadTransform = HeadTransform;
             Vector3 @return = _locomotionMode.Value switch
             {
                 Locomotion.Hip when _isInFbt && !_isCalibrating && _hipTransform != null => CalculateLocomotion(_offsetHip.transform),
                 Locomotion.Chest when _isInFbt && !_isCalibrating && _chestTransform != null => CalculateLocomotion(_offsetChest.transform),
+                Locomotion.Deca when deca!=null && (deca.state==Move.State.Streaming)  => CalculateLocomotion(deca.OutTransform),
                 _ => CalculateLocomotion(HeadTransform),
             };
 
@@ -264,7 +297,7 @@ namespace BetterLocomotion
             _checkStuffTimer = 0;
             _isInFbt = CheckIfInFbt();
             _avatarScaledSpeed = GetAvatarScaledSpeed();
-
+            //Logger.Msg($"[V3debug] {@return.ToString()} Deca{deca!=null && deca.state==Move.State.Streaming} State{deca.state.ToString()}");
             return @return;
         }
 
@@ -321,6 +354,7 @@ namespace BetterLocomotion
 
             // And finally apply t to get a point on the oval
             Vector3 inputDirection = t * (inputX * Vector3.right + inputY * Vector3.forward);
+            
             return Quaternion.FromToRotation(trackerTransform.transform.up, Vector3.up) * trackerTransform.transform.rotation * inputDirection;
         }
     }
