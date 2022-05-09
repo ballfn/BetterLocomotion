@@ -2,8 +2,12 @@
 
 Added support for decamove SDK as an input direction
 
-A mod to enhance locomotion for VRChat using MelonLoader.  
-Successor of [BetterDirections](https://github.com/d-magit/VRC-Mods).
+A mod to enhance locomotion for VRChat using MelonLoader now with decamove support.  
+Fork of [BetterLocomotion](https://github.com/Louka3000/BetterLocomotion) which is a
+successor of [BetterDirections](https://github.com/d-magit/VRC-Mods).
+
+Decamove hardware fully working with 1 press to calibrate, mobile app works via Decahub but without working direction calibration
+Tested on both SteamVR and Oculus
 
 ## Features
 - **Fixes the inconvenience that happens because of Euler angles when moving while looking up**, usually while laying down or cuddling, for example.
