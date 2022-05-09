@@ -33,6 +33,8 @@ namespace DecaSDK
         public bool onlyRotateY = true;
         public Vector3 position => _position;
         private Vector3 _position;
+        
+        public MelonLogger.Instance Logger;
 
         // This is the raw, uncalibrated rotation of the move
         public Quaternion rotation => _rotation;
@@ -65,7 +67,6 @@ namespace DecaSDK
         private SharedDisposable<SharedMove> _decaMove;
         // Event callbacks are on another thread so we need to store them until we can process them from the main thread
         private Queue<Move.Feedback> eventQueue = new Queue<Move.Feedback>();
-        public String dbOut = "";
 
         public void Start(){
             try
@@ -91,7 +92,14 @@ namespace DecaSDK
                 {
                     
                     // Debug messages get logged here.
-                    Log("DecaLog: \"" + msg + "\" logLevel: " + logLevel);
+                    if (logLevel == Move.LogLevel.Critical || logLevel == Move.LogLevel.Err)
+                    {
+                        
+                    }
+                    else
+                    {
+                        Log("DecaLog: \"" + msg + "\" logLevel: " + logLevel);
+                    }
                 };
                 Move.OnBatteryUpdateDelegate OnBatteryUpdate = (charge) =>
                 {
@@ -99,7 +107,7 @@ namespace DecaSDK
                     {
                         _battery = charge;
                     }
-                    Log("Battery charge: " + charge);
+                    //Log("Battery charge: " + charge);
                 };
                 Move.OnOrientationUpdateDelegate OnOrientationUpdate = (quaternion, accuracy, yawCalibration) =>
                 {
@@ -113,7 +121,7 @@ namespace DecaSDK
                 };
                 Move.OnImuCalibrationRequestDelegate OnImuCalibrationRequest = () =>
                 {
-                    Console.WriteLine("Deca Move requested IMU calibration");
+                    Log("Deca Move requested IMU calibration");
                 };
                 Move.OnPositionUpdateDelegate OnPositionUpdate = (x, y, z) =>
                 {
@@ -141,7 +149,6 @@ namespace DecaSDK
             {
                 outObject = new GameObject();
             }
-            //if(HeadTransform) outObject.transform.parent = HeadTransform;
             if (!onlyRotateY)
                 OutTransform.localRotation = Quaternion.AngleAxis(Rad2Deg * _yOffset, Vector3.up) * _rotation;
             else 
@@ -176,7 +183,7 @@ namespace DecaSDK
                         //onButtonTrippleClicked.Invoke();
                         break;
                     default:
-                        LogError("Unknown Move.Feedback, save your logs and leave angery messages on the Discord.");
+                        Log($"Unknown Move.Feedback, blame deca.");
                         break;
                 }
             }
@@ -219,12 +226,12 @@ namespace DecaSDK
             try
             {
                 Quaternion parentRotationOffset = Quaternion.identity;
-                    if(outObject.transform.parent) parentRotationOffset = Quaternion.Inverse(outObject.transform.parent.rotation);
+                    //if(outObject.transform.parent) parentRotationOffset = Quaternion.Inverse(outObject.transform.parent.rotation);
                     //Vector3 headForward = HeadTransform.rotation.eulerAngles; 
                     Vector3 headForward = parentRotationOffset * HeadTransform.forward;
                     
-                _decaMove.Value.Calibrate(headForward.z, headForward.x);
-                LogError($"calibated {headForward.ToString()}");
+                _decaMove.Value.Calibrate(headForward.x, headForward.z);
+                LogError($"Move calibrated");
             }
             catch (DecaSDK.Move.NativeCallFailedException e)
             {
@@ -237,12 +244,11 @@ namespace DecaSDK
 
         void Log(String message)
         {
-            //Debug.Log($"[DecaSDK] {message}");
-            //dbOut = message;
+            if(Logger!=null) Logger.Msg($"[DecaSDK] {message}");
         }void LogError(String message)
         {
             //Debug.LogError($"[DecaSDK] {message}");
-            dbOut =$"ERROR {message}" ;
+            if(Logger!=null) Logger.Error($"[DecaSDK] {message}");
         }
         const float Rad2Deg = 57.29578f;
     }

@@ -14,6 +14,11 @@ using VRC.SDKBase;
 using DecaSDK;
 
 /*
+ * Modded by ballfun to add decamove support
+ * Original by Erimel, Davi & AxisAngle
+ * https://github.com/Louka3000/BetterLocomotion
+ */
+/*
  * A lot of code was taken from the BetterDirections mod
  * Special thanks to Davi
  * https://github.com/d-magit/VRC-Mods 
@@ -29,8 +34,8 @@ namespace BetterLocomotion
 {
     public static class BuildInfo
     {
-        public const string Name = "BetterLocomotion Deca edition";
-        public const string Author = "Erimel, Davi & AxisAngle";
+        public const string Name = "BetterLocomotion DE";
+        public const string Author = "Erimel, Davi & AxisAngle + ballfun";
         public const string Version = "1.1.8";
     }
 
@@ -101,7 +106,7 @@ namespace BetterLocomotion
             _lolimotionMinimum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMinimum", 0.5f, "Lolimotion: minimum height");
             _lolimotionMaximum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMaximum", 1.1f, "Lolimotion: maximum height");
             deca = new DecaMoveBehaviour();
-            
+            deca.Logger = Logger;
             //deca.Start();
         }
 
@@ -176,11 +181,6 @@ namespace BetterLocomotion
             
             
             deca.Update();
-            if (deca.dbOut != "")
-            {
-                Logger.Error($"[DecaSDK] {deca.dbOut}");
-                deca.dbOut = "";
-            }
             //Logger.Msg($"[Deca] R{deca.OutTransform.rotation.ToString()} S{deca.state.ToString()}");
         }
         private static void VRCTrackingManager_StartCalibration()
