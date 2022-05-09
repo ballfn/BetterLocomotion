@@ -9,11 +9,14 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 using DecaSDK.Unity;
+using Il2CppSystem.Reflection;
 using Object = UnityEngine.Object;
 using MelonLoader;
+using UnhollowerRuntimeLib;
 
 namespace DecaSDK
 {
@@ -35,7 +38,7 @@ namespace DecaSDK
         private Vector3 _position;
         
         public MelonLogger.Instance Logger;
-
+        public static Transform CameraTransform;
         // This is the raw, uncalibrated rotation of the move
         public Quaternion rotation => _rotation;
         private Quaternion _rotation;
@@ -142,13 +145,31 @@ namespace DecaSDK
             }
         }
 
+        public bool SetupOutObject()
+        {
+            
+            var camera = Object.FindObjectOfType<VRCVrCamera>();
+            if(!camera) return false;
+            var transform = camera.GetIl2CppType().GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .Where(f => f.FieldType == Il2CppType.Of<Transform>()).ToArray()[0];
+            CameraTransform = transform.GetValue(camera).Cast<Transform>();
+            outObject = new GameObject();
+            
+            
+            outObject.transform.parent = CameraTransform;
+            
+            Log("OutObject was created");
+            return true;
+        }
+
         public void Update()
         {
             if(!Started) Start();
             if (!outObject)
             {
-                outObject = new GameObject();
+                if(!SetupOutObject())return;
             }
+            //Log($"local{CameraTransform.localRotation.ToEuler().ToString()} glo {CameraTransform.rotation.ToEuler().ToString()}");
             if (!onlyRotateY)
                 OutTransform.localRotation = Quaternion.AngleAxis(Rad2Deg * _yOffset, Vector3.up) * _rotation;
             else 
@@ -226,7 +247,7 @@ namespace DecaSDK
             try
             {
                 Quaternion parentRotationOffset = Quaternion.identity;
-                    //if(outObject.transform.parent) parentRotationOffset = Quaternion.Inverse(outObject.transform.parent.rotation);
+                    if(outObject.transform.parent) parentRotationOffset = Quaternion.Inverse(outObject.transform.parent.rotation);
                     //Vector3 headForward = HeadTransform.rotation.eulerAngles; 
                     Vector3 headForward = parentRotationOffset * HeadTransform.forward;
                     

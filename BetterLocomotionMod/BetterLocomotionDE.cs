@@ -8,8 +8,8 @@ using UnityEngine;
 using UnityEngine.XR;
 using MelonLoader;
 using VRC.Animation;
-using BuildInfo = BetterLocomotion.BuildInfo;
-using Main = BetterLocomotion.Main;
+using BuildInfo = BetterLocomotionDE.BuildInfo;
+using Main = BetterLocomotionDE.Main;
 using VRC.SDKBase;
 using DecaSDK;
 
@@ -30,7 +30,7 @@ using DecaSDK;
 [assembly: MelonColor(ConsoleColor.Magenta)]
 [assembly: MelonOptionalDependencies("UIExpansionKit")]
 
-namespace BetterLocomotion
+namespace BetterLocomotionDE
 {
     public static class BuildInfo
     {
@@ -43,7 +43,7 @@ namespace BetterLocomotion
 
     public class Main : MelonMod
     {
-        private enum Locomotion { Head, Hip, Chest,Deca }
+        private enum Locomotion { Head,Deca, Hip, Chest }
         internal static MelonLogger.Instance Logger;
         private static HarmonyLib.Harmony _hInstance;
 
@@ -78,7 +78,7 @@ namespace BetterLocomotion
             try
             {
                 using var resourceStream = Assembly.GetExecutingAssembly()
-                    .GetManifestResourceStream(typeof(BetterLocomotion.Main), dllName);
+                    .GetManifestResourceStream(typeof(Main), dllName);
                 using var fileStream = File.Open("VRChat_Data/Plugins/" + dllName, FileMode.Create, FileAccess.Write);
                 resourceStream.CopyTo(fileStream);
             }
@@ -91,6 +91,11 @@ namespace BetterLocomotion
             Logger.Msg("Successfully loaded!");
         }
 
+        public override void OnApplicationQuit()
+        {
+            if(deca!=null) deca.OnDestroy();
+        }
+
         private static MelonPreferences_Entry<Locomotion> _locomotionMode;
         private static MelonPreferences_Entry<float> _joystickThreshold;
         private static MelonPreferences_Entry<bool> _lolimotion;
@@ -98,7 +103,7 @@ namespace BetterLocomotion
         private static MelonPreferences_Entry<float> _lolimotionMaximum;
         private static void InitializeSettings()
         {
-            MelonPreferences.CreateCategory("BetterLocomotion", "BetterLocomotion");
+            MelonPreferences.CreateCategory("BetterLocomotionDE", "BetterLocomotion Deca Edition");
 
             _locomotionMode = MelonPreferences.CreateEntry("BetterLocomotion", "LocomotionMode", Locomotion.Head, "Locomotion mode");
             _joystickThreshold = MelonPreferences.CreateEntry("BetterLocomotion", "JoystickThreshold", 0f, "Joystick threshold (0-1)");
@@ -109,7 +114,7 @@ namespace BetterLocomotion
             deca.Logger = Logger;
             //deca.Start();
         }
-
+        
         private static void WaitForUiInit()
         {
             if (MelonHandler.Mods.Any(x => x.Info.Name.Equals("UI Expansion Kit")))
@@ -183,6 +188,8 @@ namespace BetterLocomotion
             deca.Update();
             //Logger.Msg($"[Deca] R{deca.OutTransform.rotation.ToString()} S{deca.state.ToString()}");
         }
+        
+
         private static void VRCTrackingManager_StartCalibration()
         {
             _CalibrationSavingSaverTimer = 0;
@@ -227,7 +234,7 @@ namespace BetterLocomotion
             HumanBodyBones.Chest
         };
 
-        private static Transform GetTracker(HumanBodyBones bodyPart) // Gets the SteamVR tracker for a certain bone
+        private static Transform GetTracker(HumanBodyBones bodyPart) //ba Gets the SteamVR tracker for a certain bone
         {
             var puckArray = GetSteamVRControllerManager().field_Public_ArrayOf_GameObject_0;
             for (int i = 0; i < puckArray.Length - 2; i++)
