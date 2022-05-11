@@ -12,6 +12,8 @@ using BuildInfo = BetterLocomotionDE.BuildInfo;
 using Main = BetterLocomotionDE.Main;
 using VRC.SDKBase;
 using DecaSDK;
+using UIExpansionKit.API;
+using UIExpansionKit.API.Controls;
 
 /*
  * Modded by ballfun to add decamove support
@@ -101,6 +103,7 @@ namespace BetterLocomotionDE
         private static MelonPreferences_Entry<bool> _lolimotion;
         private static MelonPreferences_Entry<float> _lolimotionMinimum;
         private static MelonPreferences_Entry<float> _lolimotionMaximum;
+        private static MelonPreferences_Entry<bool> _decaButton;
         private static void InitializeSettings()
         {
             MelonPreferences.CreateCategory("BetterLocomotionDE", "BetterLocomotion Deca Edition");
@@ -110,15 +113,26 @@ namespace BetterLocomotionDE
             _lolimotion = MelonPreferences.CreateEntry("BetterLocomotion", "Lolimotion", false, "Lolimotion (scale speed to height)");
             _lolimotionMinimum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMinimum", 0.5f, "Lolimotion: minimum height");
             _lolimotionMaximum = MelonPreferences.CreateEntry("BetterLocomotion", "LolimotionMaximum", 1.1f, "Lolimotion: maximum height");
+            _decaButton = MelonPreferences.CreateEntry("BetterLocomotion", "DecaButton", false, "Show deca menu buttons");
             deca = new DecaMoveBehaviour();
             deca.Logger = Logger;
-            //deca.Start();
+            //if(decaButton!=null) decaButton.SetVisible(_decaButton.Value);
         }
-        
+
+        public static void DecaCalibrate()
+        {
+            if(deca!=null) deca.Calibrate();
+        }
+
+        static private IMenuButton decaButton;
         private static void WaitForUiInit()
         {
             if (MelonHandler.Mods.Any(x => x.Info.Name.Equals("UI Expansion Kit")))
+            {
+                decaButton = ExpansionKitApi.GetExpandedMenu(ExpandedMenu.QuickMenu)
+                    .AddSimpleButton("Calibrate Deca", DecaCalibrate);
                 typeof(UIXManager).GetMethod("OnApplicationStart")!.Invoke(null, null);
+            }
             else
             {
                 Logger.Warning("UIExpansionKit (UIX) was not detected. Using coroutine to wait for UiInit. Please consider installing UIX.");
@@ -143,6 +157,7 @@ namespace BetterLocomotionDE
                     foreach (MethodInfo info in typeof(VRCMotionState).GetMethods().Where(method =>
                         method.Name.Contains("Method_Public_Void_Vector3_Single_") && !method.Name.Contains("PDM")))
                         _hInstance.Patch(info, new HarmonyMethod(typeof(Main).GetMethod(nameof(Prefix))));
+                    
                     Logger.Msg("Successfully loaded!");
                 }
                 catch (Exception e)
@@ -152,6 +167,15 @@ namespace BetterLocomotionDE
                 }
             }
             else Logger.Warning("Mod is VR-Only.");
+        }
+
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            if (_locomotionMode.Value == Locomotion.Deca)
+            {
+                //deca.Update();
+                //deca.Calibrate();
+            }
         }
 
         private static VRCPlayer GetLocalPlayer() => VRCPlayer.field_Internal_Static_VRCPlayer_0;
@@ -183,12 +207,20 @@ namespace BetterLocomotionDE
                 getTrackerChest = GetTracker(HumanBodyBones.Chest);
                 _CalibrationSavingSaverTimer++;
             }
-            
-            
-            deca.Update();
+
+            if (_locomotionMode.Value == Locomotion.Deca)
+            {
+                deca.Update();
+            }
             //Logger.Msg($"[Deca] R{deca.OutTransform.rotation.ToString()} S{deca.state.ToString()}");
         }
-        
+
+        private static bool hasDecaCalibrated = false;
+        public override void OnPreferencesSaved() 
+        {
+            if (decaButton != null) decaButton.SetVisible(_decaButton.Value);
+            
+        }
 
         private static void VRCTrackingManager_StartCalibration()
         {

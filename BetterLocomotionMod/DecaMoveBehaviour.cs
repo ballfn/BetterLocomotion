@@ -162,13 +162,27 @@ namespace DecaSDK
             return true;
         }
 
+        private bool hasInintCalibrate = false;
         public void Update()
         {
+            
+
             if(!Started) Start();
+            if (!HeadTransform)
+            {
+                return;
+            }
             if (!outObject)
             {
                 if(!SetupOutObject())return;
             }
+
+            if (!hasInintCalibrate)
+            {
+                hasInintCalibrate = true;
+                Calibrate();
+            }
+            
             //Log($"local{CameraTransform.localRotation.ToEuler().ToString()} glo {CameraTransform.rotation.ToEuler().ToString()}");
             if (!onlyRotateY)
                 OutTransform.localRotation = Quaternion.AngleAxis(Rad2Deg * _yOffset, Vector3.up) * _rotation;
@@ -243,7 +257,11 @@ namespace DecaSDK
         }
         public void Calibrate()
         {
-            if (!HeadTransform) LogError($"calibate Failed, no head");
+            if (!HeadTransform)
+            {
+                LogError($"Calibrate Failed, no head");
+                return;
+            }
             try
             {
                 Quaternion parentRotationOffset = Quaternion.identity;
@@ -252,7 +270,8 @@ namespace DecaSDK
                     Vector3 headForward = parentRotationOffset * HeadTransform.forward;
                     
                 _decaMove.Value.Calibrate(headForward.x, headForward.z);
-                LogError($"Move calibrated");
+                LogWarning($"Move calibrated");
+                SendHaptic();
             }
             catch (DecaSDK.Move.NativeCallFailedException e)
             {
@@ -266,6 +285,10 @@ namespace DecaSDK
         void Log(String message)
         {
             if(Logger!=null) Logger.Msg($"[DecaSDK] {message}");
+        }void LogWarning(String message)
+        {
+            //Debug.LogError($"[DecaSDK] {message}");
+            if(Logger!=null) Logger.Warning($"[DecaSDK] {message}");
         }void LogError(String message)
         {
             //Debug.LogError($"[DecaSDK] {message}");
